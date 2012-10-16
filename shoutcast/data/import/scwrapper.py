@@ -79,6 +79,8 @@ class ShoutCast(object):
         url=url+criteria       # append user entered search criteria...and pass it on :-)
 
         return self._generate_stations(url)
+    
+    #TODO : nowplaying does not work as expected.. any ideas are most welcome :-)   
         
     def nowplaying(self, criteria, limit=-1):
         """ 
