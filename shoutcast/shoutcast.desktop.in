@@ -1,0 +1,8 @@
+[Desktop Entry]
+_Name=Shoutcast
+_Comment=Shoutcast application
+Categories=GNOME;Utility;
+Exec=shoutcast
+Icon=/usr/share/shoutcast/media/icon.png
+Terminal=false
+Type=Application

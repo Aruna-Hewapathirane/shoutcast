@@ -1,0 +1,14 @@
+Format-Specification: http://wiki.debian.org/Proposals/CopyrightFormat
+Upstream-Name: shoutcast
+Upstream-Maintainer: Aruna Hewapathirane <aruna.hewapathirane@gmail.com>
+Upstream-Source: UNKNOWN
+
+Files: *
+Copyright: (C) 2009 Mario Boikov <mario@beblue.org>.
+Copyright: (C) 2010 
+Copyright: (C) 2010 Aruna Hewapathirane <aruna.hewapathirane@gmail.com>
+Copyright: (C) 2010 Aruna Hewapathirane &lt;aruna.hewapathirane@gmail.com&gt;
+Copyright: (C) 2010 Aruna Hewapathirane &lt;aruna.hewapathirane@gmail.com&gt;</property>
+License: GPL-3
+ The full text of the GPL is distributed in
+ /usr/share/common-licenses/GPL-3 on Debian systems.

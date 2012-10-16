@@ -1,0 +1,304 @@
+#!/usr/bin/python
+# -*- Mode: Python; coding: utf-8; indent-tabs-mode: nil; tab-width: 4 -*-
+### BEGIN LICENSE
+# Copyright (C) 2010 Aruna Hewapathirane <aruna.hewapathirane@gmail.com>
+# This program is free software: you can redistribute it and/or modify it 
+# under the terms of the GNU General Public License version 3, as published 
+# by the Free Software Foundation.
+# 
+# This program is distributed in the hope that it will be useful, but 
+# WITHOUT ANY WARRANTY; without even the implied warranties of 
+# MERCHANTABILITY, SATISFACTORY QUALITY, or FITNESS FOR A PARTICULAR 
+# PURPOSE.  See the GNU General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License along 
+# with this program.  If not, see <http://www.gnu.org/licenses/>.
+### END LICENSE
+
+import sys
+import os
+import gtk
+import gst
+
+import gettext
+from gettext import gettext as _
+gettext.textdomain('shoutcast')
+
+# check if we are developing trunk..
+real_path= os.path.realpath(sys.argv[0])
+
+if real_path == '/home/aruna/python/radio1/shoutcast/bin/shoutcast': # we are in development trunk
+    print "in if.."+real_path
+    IMPORT_PATH="/home/aruna/python/radio1/shoutcast/data/import"
+else:
+    print "in else.."+real_path
+    IMPORT_PATH="/usr/share/shoutcast/import" # we are running a installed deb.
+
+#print 
+sys.path.insert(0,IMPORT_PATH)
+#print sys.path
+
+import scwrapper
+#from data import *
+PROJECT_ROOT_DIRECTORY = os.path.abspath(os.path.dirname(os.path.dirname(os.path.realpath(sys.argv[0]))))
+print PROJECT_ROOT_DIRECTORY +"<-project root"
+
+
+#--------------------Global-( I think..)-----------------------------------------
+shoutcast=scwrapper.ShoutCast()
+genres=shoutcast.genres()
+#--------------------Global------------------------------------------    
+
+#playbin = gst.element_factory_make("playbin", "player")
+#>>> print(playbin)
+#/GstPlayBin:player (__main__.GstPlayBin)
+#>>> print bus
+#/GstBus:bus1 (gst.Bus)
+
+playbin = gst.element_factory_make("playbin", "player")
+bus = playbin.get_bus()
+bus.add_signal_watch()
+bus.enable_sync_message_emission()
+
+
+#>>> playbin.set_property("uri", "http://66.55.143.197:9014")
+#>>> playbin.set_state(gst.STATE_PLAYING)
+
+
+
+# optional Launchpad integration
+# this shouldn't crash if not found as it is simply used for bug reporting
+try:
+    import LaunchpadIntegration
+    launchpad_available = True
+except:
+    launchpad_available = False
+
+# Add project root directory (enable symlink, and trunk execution).
+PROJECT_ROOT_DIRECTORY = os.path.abspath(
+    os.path.dirname(os.path.dirname(os.path.realpath(sys.argv[0]))))
+
+if (os.path.exists(os.path.join(PROJECT_ROOT_DIRECTORY, 'shoutcast'))
+    and PROJECT_ROOT_DIRECTORY not in sys.path):
+    sys.path.insert(0, PROJECT_ROOT_DIRECTORY)
+    os.putenv('PYTHONPATH', PROJECT_ROOT_DIRECTORY) # for subprocesses ( Sheeez.. guys - yuck n double YUCK !)
+
+print PROJECT_ROOT_DIRECTORY +"<-project root"
+
+#if PROJECT_ROOT == '/home/aruna/python/radio1/shoutcast/':
+#    print "in if .."
+#    IMPORT_PATH="/home/aruna/python/radio1/shoutcast/data/import"   
+#    sys.path.insert(0,IMPORT_PATH)
+#else:
+#    print "in else one.."
+#    IMPORT_PATH="/usr/share/shoutcast/import"   
+#    sys.path.insert(0,IMPORT_PATH)
+
+from shoutcast import (
+    AboutShoutcastDialog, PreferencesShoutcastDialog)
+from shoutcast.helpers import get_builder
+
+
+
+class ShoutcastWindow(gtk.Window):
+    __gtype_name__ = "ShoutcastWindow"
+    
+    # To construct a new instance of this method, the following notable 
+    # methods are called in this order:
+    # __new__(cls)
+    # __init__(self)
+    # finish_initializing(self, builder)
+    # __init__(self)
+    #
+    # For this reason, it's recommended you leave __init__ empty and put
+    # your inialization code in finish_intializing
+    
+    def __new__(cls):
+        """Special static method that's automatically called by Python when 
+        constructing a new instance of this class.
+        
+        Returns a fully instantiated ShoutcastWindow object.
+        """
+        builder = get_builder('ShoutcastWindow')
+        new_object = builder.get_object("shoutcast_window")
+        new_object.finish_initializing(builder)
+        return new_object
+
+    def finish_initializing(self, builder):
+        """Called while initializing this instance in __new__
+
+        finish_initalizing should be called after parsing the UI definition
+        and creating a ShoutcastWindow object with it in order to finish
+        initializing the start of the new ShoutcastWindow instance.
+        
+        Put your initilization code in here and leave __init__ undefined.
+        """
+        # Get a reference to the builder and set up the signals.
+        self.builder = builder
+        self.builder.connect_signals(self)
+
+        global launchpad_available
+        if launchpad_available:
+            # see https://wiki.ubuntu.com/UbuntuDevelopment/Internationalisation/Coding for more information
+            # about LaunchpadIntegration
+            helpmenu = self.builder.get_object('helpMenu')
+            if helpmenu:
+                LaunchpadIntegration.set_sourcepackagename('shoutcast')
+                LaunchpadIntegration.add_items(helpmenu, 0, False, True)
+            else:
+                launchpad_available = False
+
+        # Uncomment the following code to read in preferences at start up.
+        #dlg = PreferencesShoutcastDialog.NewPreferencesShoutcastDialog()
+        #self.preferences = dlg.get_preferences()
+
+
+        # Code for other initialization actions should be added here.
+
+        #---------------Don't like doing this but no choice-----------------------------------
+        for genre in genres:
+            self.builder.get_object('liststore2').append([genre])
+        #---------------Don't like doing this but no choice-----------------------------------
+
+    def on_search(self, widget, data=None):
+        search_for=self.builder.get_object("entry1").get_text()
+        print search_for
+        found_stations=shoutcast.search(search_for)
+        self.builder.get_object("liststore1").clear()
+#        print found_stations
+
+        for Station in found_stations:
+            self.builder.get_object('liststore1').append(Station)
+
+    def on_playing(self, widget, data=None):
+        search_for=self.builder.get_object("entry2").get_text()
+        print search_for
+        found_stations=shoutcast.nowplaying(search_for)
+        self.builder.get_object("liststore1").clear()
+#        print found_stations
+
+        for Station in found_stations:
+            self.builder.get_object('liststore1').append(Station)
+        
+
+    def on_activated(self, widget, row, col):        
+
+        model =self.builder.get_object("treeview2").get_model()
+        text = model[row][0]
+
+        self.builder.get_object('statusbar1').push(0, text)
+
+        self.builder.get_object("liststore1").clear()          
+        stations=shoutcast.stations(text)
+
+        for station in stations:
+            self.builder.get_object('liststore1').append(station)
+
+    def on_message(self, bus, message, reading_tag = False):
+        #self.builder.get_object('textbuffer1').set_text(message)
+        print type(message)
+        print message
+       
+      #  if message.type == gst.MESSAGE_EOS: # End of Stream
+
+      #      self.player.set_state(gst.STATE_NULL)
+
+       # elif message.type == gst.MESSAGE_ERROR:
+
+       #     self.player.set_state(gst.STATE_NULL)
+
+       #     (err, debug) = message.parse_error()
+
+       #     print “Error: %s” % err, debug
+
+     
+    def stop(self,widget):        
+        playbin.set_state(gst.STATE_NULL) # just in case we ARE already playin a       
+
+     
+    def play(self,widget):        
+        playbin.set_state(gst.STATE_PLAYING) # ja ja jaaa python rocks n we do tooh ( tree-eeh ? wot ? ja ja am happy :-)))
+        bus.connect('message', self.on_message)
+
+        
+    def on_station(self, widget, row, col):        
+
+        model =self.builder.get_object("treeview1").get_model()
+        text = model[row][2]
+
+        self.builder.get_object('statusbar1').push(0, text)
+        pls=shoutcast.tune_in(text)
+        pl=pls.read()
+#        print pl
+        self.builder.get_object('textbuffer1').set_text("")
+        playbin.set_state(gst.STATE_NULL) # just in case we ARE already playin a station then STOP.
+# put in exception chks - what IF there are nil pls or pls is empty u dope ? me dope ? 
+
+
+        self.builder.get_object('textbuffer1').set_text(pl)
+        sturl= pl.split()
+#       print sturl
+#        print sturl[2] # pass THIS to gstreamer and BANG! ( BANG = Beautiful Audio Naturally Gnome ! )
+        surl= sturl[2]
+        print surl+" sc server and port"
+        print str(len(surl)) +" len of selected url"
+        stend=len(surl)
+        print surl[6:stend]
+        scs=surl[6:stend]
+        playbin.set_property("uri", scs)
+        playbin.set_state(gst.STATE_PLAYING) # ja ja jaaa python rocks n we do tooh ( tree-eeh ? wot ? ja ja am happy :-)))
+        bus.connect('message', self.on_message)
+
+
+
+        
+#        self.builder.get_object("liststore1").clear()          
+#        stations=shoutcast.stations(text)
+
+#        for station in stations:
+#            self.builder.get_object('liststore1').append(station)
+
+
+    def about(self, widget, data=None):
+        """Display the about box for shoutcast."""
+        about = AboutShoutcastDialog.AboutShoutcastDialog()
+        response = about.run()
+        about.destroy()
+
+    def preferences(self, widget, data=None):
+        """Display the preferences window for shoutcast."""
+        prefs = PreferencesShoutcastDialog.PreferencesShoutcastDialog()
+        response = prefs.run()
+        if response == gtk.RESPONSE_OK:
+            # Make any updates based on changed preferences here.
+            pass
+        prefs.destroy()
+
+    def quit(self, widget, data=None):
+        """Signal handler for closing the ShoutcastWindow."""
+        self.destroy()
+
+    def on_destroy(self, widget, data=None):
+        """Called when the ShoutcastWindow is closed."""
+        # Clean up code for saving application state should be added here.
+        gtk.main_quit()
+
+if __name__ == "__main__":
+    # Support for command line options.
+    import logging
+    import optparse
+    parser = optparse.OptionParser(version="%prog %ver")
+    parser.add_option(
+        "-v", "--verbose", action="store_true", dest="verbose",
+        help=_("Show debug messages"))
+    (options, args) = parser.parse_args()
+
+    # Set the logging level to show debug messages.
+    if options.verbose:
+        logging.basicConfig(level=logging.DEBUG)
+        logging.debug('logging enabled')
+
+    # Run the application.
+    window = ShoutcastWindow()
+    window.show()
+    gtk.main()
